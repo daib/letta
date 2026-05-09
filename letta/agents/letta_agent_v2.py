@@ -155,16 +155,22 @@ class LettaAgentV2(BaseAgentV2):
             input_messages: List of new messages to process
             client_skills: Optional client-side skills to include in system prompt
             client_tools: Optional client-side tools to include in tool list (V2 ignores, V3 uses)
-            conversation_id: Optional conversation ID (V2 ignores, V3 uses for scoped context)
+            conversation_id: Optional conversation ID for scoped context loading
 
         Returns:
             dict: The request data that would be sent to the LLM
         """
         request = {}
+        self.conversation_id = conversation_id
         self.client_skills = client_skills or []
         self.override_system = override_system
         in_context_messages, input_messages_to_persist = await _prepare_in_context_messages_no_persist_async(
-            input_messages, self.agent_state, self.message_manager, self.actor, None
+            input_messages,
+            self.agent_state,
+            self.message_manager,
+            self.actor,
+            None,
+            conversation_id=conversation_id,
         )
         response = self._step(
             run_id=None,
@@ -196,6 +202,7 @@ class LettaAgentV2(BaseAgentV2):
         use_assistant_message: bool = True,
         include_return_message_types: list[MessageType] | None = None,
         request_start_timestamp_ns: int | None = None,
+        conversation_id: str | None = None,
         client_tools: list[ClientToolSchema] | None = None,
         client_skills: list[ClientSkillSchema] | None = None,
         override_system: str | None = None,
@@ -219,13 +226,18 @@ class LettaAgentV2(BaseAgentV2):
             LettaResponse: Complete response with all messages and metadata
         """
         self._initialize_state()
-        self.conversation_id = None
+        self.conversation_id = conversation_id
         self.client_skills = client_skills or []
         self.override_system = override_system
         request_span = self._request_checkpoint_start(request_start_timestamp_ns=request_start_timestamp_ns)
 
         in_context_messages, input_messages_to_persist = await _prepare_in_context_messages_no_persist_async(
-            input_messages, self.agent_state, self.message_manager, self.actor, run_id
+            input_messages,
+            self.agent_state,
+            self.message_manager,
+            self.actor,
+            run_id,
+            conversation_id=conversation_id,
         )
         in_context_messages = in_context_messages + input_messages_to_persist
         response_letta_messages = []
@@ -306,7 +318,7 @@ class LettaAgentV2(BaseAgentV2):
         use_assistant_message: bool = True,
         include_return_message_types: list[MessageType] | None = None,
         request_start_timestamp_ns: int | None = None,
-        conversation_id: str | None = None,  # Not used in V2, but accepted for API compatibility
+        conversation_id: str | None = None,
         client_tools: list[ClientToolSchema] | None = None,
         client_skills: list[ClientSkillSchema] | None = None,
         override_system: str | None = None,
@@ -368,7 +380,12 @@ class LettaAgentV2(BaseAgentV2):
 
         try:
             in_context_messages, input_messages_to_persist = await _prepare_in_context_messages_no_persist_async(
-                input_messages, self.agent_state, self.message_manager, self.actor, run_id
+                input_messages,
+                self.agent_state,
+                self.message_manager,
+                self.actor,
+                run_id,
+                conversation_id=conversation_id,
             )
             in_context_messages = in_context_messages + input_messages_to_persist
             credit_task = None

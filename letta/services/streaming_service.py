@@ -346,8 +346,14 @@ class StreamingService:
                 for otid in message_otids:
                     await redis_client.set_otid_run_mapping(otid, run.id)
 
-            # use agent loop for streaming
-            agent_loop = AgentLoop.load(agent_state=agent, actor=actor)
+            # Use conversation-aware v3 loop for named conversations.
+            # Agent-direct/default requests continue using AgentLoop factory behavior.
+            if conversation_id:
+                from letta.agents.letta_agent_v3 import LettaAgentV3
+
+                agent_loop = LettaAgentV3(agent_state=agent, actor=actor, conversation_id=conversation_id)
+            else:
+                agent_loop = AgentLoop.load(agent_state=agent, actor=actor)
 
             # create the base stream with error handling
             raw_stream = self._create_error_aware_stream(

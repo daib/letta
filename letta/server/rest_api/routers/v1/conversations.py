@@ -8,6 +8,7 @@ from starlette.responses import StreamingResponse
 
 from letta.agents.agent_loop import AgentLoop
 from letta.agents.letta_agent_v3 import LettaAgentV3
+from letta.agents.letta_agent_v3 import LettaAgentV3
 from letta.constants import REDIS_RUN_ID_PREFIX
 from letta.data_sources.redis_client import NoopAsyncRedisClient, get_redis_client
 from letta.errors import ConversationBusyError, LettaExpiredError, LettaInvalidArgumentError, NoActiveRunsToCancelError
@@ -543,7 +544,7 @@ async def send_conversation_message(
     redis_client = await get_redis_client()
     await redis_client.set(f"{REDIS_RUN_ID_PREFIX}:{conversation.agent_id}", run.id if run else None)
 
-    agent_loop = AgentLoop.load(agent_state=agent, actor=actor)
+    agent_loop = LettaAgentV3(agent_state=agent, actor=actor, conversation_id=conversation_id)
     return await agent_loop.step(
         request.messages,
         max_steps=request.max_steps,
@@ -645,7 +646,7 @@ async def preview_conversation_model_request(
         )
         agent = agent.model_copy(update={"llm_config": override_llm_config})
 
-    agent_loop = AgentLoop.load(agent_state=agent, actor=actor)
+    agent_loop = LettaAgentV3(agent_state=agent, actor=actor, conversation_id=conversation_id)
     return await agent_loop.build_request(
         input_messages=request.messages,
         client_skills=request.client_skills,
